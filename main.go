@@ -3,14 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
-)
 
-type apiConfigData struct {
-	OpenWeatherMapApiKey string `json:"OpenWeatherMapApiKey"`
-}
+	"github.com/joho/godotenv"
+)
 
 type weatherData struct {
 	Name string `json:"name"`
@@ -19,17 +17,26 @@ type weatherData struct {
 	} `json:"main"`
 }
 
-func loadApiConfig(filename string) (apiConfigData, error) {
-	bytes, err := ioutil.ReadFile(filename)
+func query(city string) (weatherData, error) {
+
+	KeyMap, err := godotenv.Read(".env")
 	if err != nil {
-		return apiConfigData{}, err
+		log.Fatal(err)
 	}
-	var c apiConfigData
-	err = json.Unmarshal(bytes, &c)
+
+	resp, err := http.Get("https://api.openweathermap.org/data/2.5/weather?q=" + city + "&appid=" + KeyMap["ApiKey"])
 	if err != nil {
-		return apiConfigData{}, err
+		return weatherData{}, err
 	}
-	return c, nil
+
+	defer resp.Body.Close()
+	var d weatherData
+	if err := json.NewDecoder(resp.Body).Decode(&d); err != nil {
+		return weatherData{}, err
+	}
+
+	return d, nil
+
 }
 
 func main() {
@@ -52,25 +59,4 @@ func main() {
 	if err := http.ListenAndServe(":8000", nil); err != nil {
 		fmt.Println(err)
 	}
-}
-
-func query(city string) (weatherData, error) {
-	apiConfig, err := loadApiConfig(".apiConfig")
-	if err != nil {
-		return weatherData{}, err
-	}
-	// ("http://api.openweathermap.org/data/2.5/weather?q=" + city + "&appid=" + apiConfig.OpenWeatherMapApiKey)
-	resp, err := http.Get("https://api.openweathermap.org/data/2.5/weather?q=" + city + "&apiid=" + apiConfig.OpenWeatherMapApiKey)
-	if err != nil {
-		return weatherData{}, err
-	}
-	fmt.Println(resp)
-	defer resp.Body.Close()
-	var d weatherData
-	if err := json.NewDecoder(resp.Body).Decode(&d); err != nil {
-		return weatherData{}, err
-	}
-	fmt.Println(d.Main, d.Name, d.Main.Kelvin)
-	return d, nil
-
 }
