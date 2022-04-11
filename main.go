@@ -59,4 +59,5 @@ func main() {
 	if err := http.ListenAndServe(":8000", nil); err != nil {
 		fmt.Println(err)
 	}
+	fmt.Println("minior changes")
 }
